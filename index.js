@@ -18,6 +18,7 @@ async function run(){
     await client.connect();
     const toolCollection = client.db("blaze_manufacturing").collection("tools");
     const reviewCollection = client.db("blaze_manufacturing").collection("reviews");
+    const userCollection = client.db("blaze_manufacturing").collection("users");
 
     try{
 
@@ -32,6 +33,38 @@ async function run(){
             const review = req.body;
             const result = await reviewCollection.insertOne(review);
             res.send(result);
+        })
+
+        // user apis
+        app.get('/users', async (req, res)=>{
+            const query = {};
+            const users = await userCollection.find(query).toArray();
+            res.send(users);
+        })
+
+        app.get('/users/:email', async (req, res)=>{
+            const email = req.params.email;
+            const query = {email:email};
+            const user = await userCollection.findOne(query);
+            res.send(user);
+        })
+
+        app.post('/users', async (req, res)=>{
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
+
+        app.put('/users/:id', async (req, res)=>{
+            const id = req.params.id;
+            const user = req.body;
+            const filter = {_id:ObjectId(id)};
+            const options = {upsert:true};
+            const updatedDoc = {
+                $set: user,
+            };
+            const updatedUser = await userCollection.updateOne(filter, updatedDoc, options)
+            res.send(user);
         })
 
         // tool apis
