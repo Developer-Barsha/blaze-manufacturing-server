@@ -43,9 +43,9 @@ async function run() {
     
         // admin verifying function
         const verifyAdmin = async (req, res, next) => {
-            const requester = req.decoded.email;
+            const requester = req?.decoded?.email;
             const requesterAccount = await userCollection.findOne({ email: requester });
-            if (requesterAccount.role === 'admin') {
+            if (requesterAccount?.role === 'admin') {
                 next();
             }
             else {
@@ -129,7 +129,7 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/tools', verifyAdmin, async (req, res) => {
+        app.post('/tools', verifyJWT, verifyAdmin, async (req, res) => {
             const tool = req.body;
             const result = await toolCollection.insertOne(tool);
             res.send(result);
