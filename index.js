@@ -50,7 +50,7 @@ async function run() {
 
     try {
 
-        // review apis
+        //************************** review apis**************************
         app.get('/reviews', async (req, res) => {
             const query = {};
             const reviews = await reviewCollection.find(query).toArray();
@@ -63,7 +63,7 @@ async function run() {
             res.send(result);
         })
 
-        // user apis
+        //************************** user apis **************************
         app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const query = {};
             const users = await userCollection.find(query).toArray();
@@ -90,7 +90,7 @@ async function run() {
             res.send({ updatedUser, token });
         })
 
-        // tool apis
+        //************************** tool apis **************************
         app.get('/tools', async (req, res) => {
             const query = {};
             const tools = await toolCollection.find(query).toArray();
@@ -110,18 +110,31 @@ async function run() {
             res.send(result);
         })
 
-        // order apis
-        // app.get('/orders', verifyJWT, async (req, res) => {
-        //     const query = {};
-        //     const orders = await orderCollection.find(query).toArray();
-        //     res.send(orders);
-        // })
+        //************************** order apis **************************
+        app.get('/orders', verifyJWT, async (req, res) => {
+            const email = req.query.email;
+            const decodedEmail = req.decoded.email;
+            if(decodedEmail===email){
+                const query = { email: email };
+                const orders = await orderCollection.find(query).toArray();
+                return res.send(orders);
+            }
+            else {
+                return res.status(403).send({ message: 'forbidden' });
+            }            
+        })
 
-        app.get('/orders/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email;
-            const query = { email: email };
+        app.get('/orders', async (req, res) => {
+            const query = {};
             const orders = await orderCollection.find(query).toArray();
             res.send(orders);
+        })
+
+        app.get('/orders/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const order = await orderCollection.findOne(query);
+            res.send(order);
         })
 
         app.post('/orders', async (req, res) => {
@@ -130,7 +143,20 @@ async function run() {
             res.send(result);
         })
 
-        //admin apis
+        // app.put('/orders/:id', async (req, res) => {
+        //     const order = req.body;
+        //     const result = await orderCollection.insertOne(order);
+        //     res.send(result);
+        // })
+
+        app.delete('/orders/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = {_id : ObjectId(id)};
+            const result = await orderCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        //************************** admin apis **************************
         app.put('/users/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
