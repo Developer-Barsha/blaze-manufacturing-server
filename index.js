@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // middleware
 app.use(cors())
@@ -31,24 +32,41 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 async function run() {
-    await client.connect();
-    const toolCollection = client.db("blaze_manufacturing").collection("tools");
-    const reviewCollection = client.db("blaze_manufacturing").collection("reviews");
-    const userCollection = client.db("blaze_manufacturing").collection("users");
-    const orderCollection = client.db("blaze_manufacturing").collection("orders");
-
-    const verifyAdmin = async (req, res, next) => {
-        const requester = req.decoded.email;
-        const requesterAccount = await userCollection.findOne({ email: requester });
-        if (requesterAccount.role === 'admin') {
-            next();
-        }
-        else {
-            res.status(403).send({ message: 'forbidden' });
-        }
-    }
-
     try {
+        await client.connect();
+        const toolCollection = client.db("blaze_manufacturing").collection("tools");
+        const reviewCollection = client.db("blaze_manufacturing").collection("reviews");
+        const userCollection = client.db("blaze_manufacturing").collection("users");
+        const orderCollection = client.db("blaze_manufacturing").collection("orders");
+        const paymentCollection = client.db("blaze_manufacturing").collection("payments");
+        const blogCollection = client.db("blaze_manufacturing").collection("blogs");
+    
+        // admin verifying function
+        const verifyAdmin = async (req, res, next) => {
+            const requester = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({ email: requester });
+            if (requesterAccount.role === 'admin') {
+                next();
+            }
+            else {
+                res.status(403).send({ message: 'forbidden' });
+            }
+        }    
+        
+        // payment intent making api
+        app.post('/create-payment-intent', verifyJWT, async(req, res)=>{
+            const payment = req.body;
+            const price = payment?.price;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency:'usd',
+                payment_method_types:['card']
+            });
+            res.send({clientSecret : paymentIntent?.client_secret})
+        })
+
+
 
         //************************** review apis**************************
         app.get('/reviews', async (req, res) => {
@@ -94,7 +112,7 @@ async function run() {
         app.get('/tools', async (req, res) => {
             const query = {};
             const tools = await toolCollection.find(query).toArray();
-            res.send(tools);
+            res.send(tools.reverse());
         })
 
         app.get('/tools/:id', async (req, res) => {
@@ -143,11 +161,20 @@ async function run() {
             res.send(result);
         })
 
-        // app.put('/orders/:id', async (req, res) => {
-        //     const order = req.body;
-        //     const result = await orderCollection.insertOne(order);
-        //     res.send(result);
-        // })
+        app.patch('/orders/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const payment = req.body;
+            const updatedDoc = {
+                $set: {
+                    paid:true,
+                    transactionId: payment?.transactionId
+                },
+            };
+            const result = await paymentCollection.insertOne(payment);
+            const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
+            res.send(updatedOrder);
+        })
 
         app.delete('/orders/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
@@ -174,6 +201,13 @@ async function run() {
             res.send({ admin: isAdmin })
         })
 
+
+        //************************** blog apis **************************
+        app.get('/blogs', async (req, res) => {
+            const query = {};
+            const blogs = await blogCollection.find(query).toArray();
+            res.send(blogs);
+        })
     }
     finally {
 
