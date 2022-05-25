@@ -108,6 +108,13 @@ async function run() {
             res.send({ updatedUser, token });
         })
 
+        app.delete('/users/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = {_id : ObjectId(id)};
+            const result = await userCollection.deleteOne(query);
+            res.send(result);
+        })
+
         //************************** tool apis **************************
         app.get('/tools', async (req, res) => {
             const query = {};
@@ -125,6 +132,13 @@ async function run() {
         app.post('/tools', verifyAdmin, async (req, res) => {
             const tool = req.body;
             const result = await toolCollection.insertOne(tool);
+            res.send(result);
+        })
+
+        app.delete('/tools/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = {_id : ObjectId(id)};
+            const result = await toolCollection.deleteOne(query);
             res.send(result);
         })
 
