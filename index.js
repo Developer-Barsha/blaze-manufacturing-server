@@ -40,7 +40,7 @@ async function run() {
         const orderCollection = client.db("blaze_manufacturing").collection("orders");
         const paymentCollection = client.db("blaze_manufacturing").collection("payments");
         const blogCollection = client.db("blaze_manufacturing").collection("blogs");
-    
+
         // admin verifying function
         const verifyAdmin = async (req, res, next) => {
             const requester = req?.decoded?.email;
@@ -51,19 +51,21 @@ async function run() {
             else {
                 res.status(403).send({ message: 'forbidden' });
             }
-        }    
-        
+        }
+
         // payment intent making api
-        app.post('/create-payment-intent', verifyJWT, async(req, res)=>{
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const payment = req.body;
-            const price = payment?.price;
-            const amount = price * 100;
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: amount,
-                currency:'usd',
-                payment_method_types:['card']
-            });
-            res.send({clientSecret : paymentIntent?.client_secret})
+            const price = parseFloat(payment?.price);
+            if (price) {
+                const amount = price * 100;
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: 'usd',
+                    payment_method_types: ['card']
+                });
+                res.send({ clientSecret: paymentIntent?.client_secret })
+            }
         })
 
 
@@ -110,7 +112,7 @@ async function run() {
 
         app.delete('/users/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await userCollection.deleteOne(query);
             res.send(result);
         })
@@ -137,26 +139,26 @@ async function run() {
 
         app.delete('/tools/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await toolCollection.deleteOne(query);
             res.send(result);
         })
 
         //************************** order apis **************************
-        app.get('/orders', verifyJWT, async (req, res) => {
-            const email = req.query.email;
+        app.get('/orders/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
             const decodedEmail = req.decoded.email;
-            if(decodedEmail===email){
+            if (decodedEmail === email) {
                 const query = { email: email };
                 const orders = await orderCollection.find(query).toArray();
                 return res.send(orders);
             }
             else {
                 return res.status(403).send({ message: 'forbidden' });
-            }            
+            }
         })
 
-        app.get('/orders', async (req, res) => {
+        app.get('/orders', verifyJWT, verifyAdmin, async (req, res) => {
             const query = {};
             const orders = await orderCollection.find(query).toArray();
             res.send(orders);
@@ -181,7 +183,8 @@ async function run() {
             const payment = req.body;
             const updatedDoc = {
                 $set: {
-                    paid:true,
+                    paid: true,
+                    status: 'pending',
                     transactionId: payment?.transactionId
                 },
             };
@@ -192,7 +195,7 @@ async function run() {
 
         app.delete('/orders/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await orderCollection.deleteOne(query);
             res.send(result);
         })
