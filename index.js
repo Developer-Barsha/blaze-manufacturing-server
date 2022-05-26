@@ -192,7 +192,7 @@ async function run() {
             res.send(updatedOrder);
         })
 
-        app.patch('/pay-order/:id', verifyJWT, async (req, res) => {
+        app.patch('/pay-order/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: ObjectId(id) };
             const updatedDoc = {
