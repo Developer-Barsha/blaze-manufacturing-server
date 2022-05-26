@@ -20,6 +20,7 @@ const verifyJWT = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     jwt.verify(token, process.env.SECRET_ACCESS_TOKEN, function (err, decoded) {
         if (err) {
+            console.log(err);
             return res.status(403).send({ message: 'Forbidden access' });
         }
         req.decoded = decoded;
@@ -38,7 +39,6 @@ async function run() {
         const reviewCollection = client.db("blaze_manufacturing").collection("reviews");
         const userCollection = client.db("blaze_manufacturing").collection("users");
         const orderCollection = client.db("blaze_manufacturing").collection("orders");
-        const paymentCollection = client.db("blaze_manufacturing").collection("payments");
         const blogCollection = client.db("blaze_manufacturing").collection("blogs");
 
         // admin verifying function
@@ -49,16 +49,15 @@ async function run() {
                 next();
             }
             else {
-                res.status(403).send({ message: 'forbidden' });
+                res.status(403).send({ message: 'Not authorized' });
             }
         }
 
         // payment intent making api
         app.post('/create-payment-intent', verifyJWT, async (req, res) => {
-            const payment = req.body;
-            const price = parseFloat(payment?.price);
-            if (price) {
-                const amount = price * 100;
+            const payment = req.body.price;
+            if (payment) {
+                const amount = parseFloat(payment) * 100;
                 const paymentIntent = await stripe.paymentIntents.create({
                     amount: amount,
                     currency: 'usd',
@@ -149,9 +148,9 @@ async function run() {
             const email = req.params.email;
             const decodedEmail = req.decoded.email;
             if (decodedEmail === email) {
-                const query = { email: email };
-                const orders = await orderCollection.find(query).toArray();
-                return res.send(orders);
+            const query = { email: email };
+            const orders = await orderCollection.find(query).toArray();
+            res.send(orders);
             }
             else {
                 return res.status(403).send({ message: 'forbidden' });
@@ -164,7 +163,7 @@ async function run() {
             res.send(orders);
         })
 
-        app.get('/orders/:id', async (req, res) => {
+        app.get('/pay-order/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             console.log(id);
             const query = { _id: ObjectId(id) };
@@ -189,7 +188,18 @@ async function run() {
                     transactionId: payment?.transactionId
                 },
             };
-            const result = await paymentCollection.insertOne(payment);
+            const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
+            res.send(updatedOrder);
+        })
+
+        app.patch('/pay-order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: 'shipped',
+                },
+            };
             const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
             res.send(updatedOrder);
         })
