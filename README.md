@@ -2,8 +2,7 @@
 
 Click to open [Live Site](https://blaze-manufacturing.netlify.app/).
 
-
-## Server Features
+## Server Functionality
  - JWT to secure sensitive informations
  - Stripe to implement payment
  - NoSQL mongoDB database to store data
