@@ -4,12 +4,25 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
+app.use(cors());
+app.use(express.json());
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // middleware
-app.use(cors())
-app.use(express.json());
+// const corsConfig = {
+//     origin: '*',
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE']
+// }
+// app.use(cors(corsConfig))
+// app.options("*", cors(corsConfig))
+// app.use(function (req, res, next) {
+//     res.header("Access-Control-Allow-Origin", "*")
+//     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept,authorization")
+//     next()
+// })
+// app.use(express.json());
 
 
 const verifyJWT = async (req, res, next) => {
@@ -148,9 +161,9 @@ async function run() {
             const email = req.params.email;
             const decodedEmail = req.decoded.email;
             if (decodedEmail === email) {
-            const query = { email: email };
-            const orders = await orderCollection.find(query).toArray();
-            res.send(orders);
+                const query = { email: email };
+                const orders = await orderCollection.find(query).toArray();
+                res.send(orders);
             }
             else {
                 return res.status(403).send({ message: 'forbidden' });
